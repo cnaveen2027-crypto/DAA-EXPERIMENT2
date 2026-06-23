@@ -1,10 +1,10 @@
-from flask import Flask, request
+from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
 
-# -------------------------
+# ---------------------------
 # Naive Search
-# -------------------------
+# ---------------------------
 def naive_search(text, pattern):
     n, m = len(text), len(pattern)
     matches = []
@@ -27,17 +27,16 @@ def naive_search(text, pattern):
     return matches, comparisons
 
 
-# -------------------------
-# KMP Search
-# -------------------------
+# ---------------------------
+# KMP
+# ---------------------------
 def compute_lps(pattern):
-    m = len(pattern)
-    lps = [0] * m
+    lps = [0] * len(pattern)
 
     length = 0
     i = 1
 
-    while i < m:
+    while i < len(pattern):
         if pattern[i] == pattern[length]:
             length += 1
             lps[i] = length
@@ -54,7 +53,8 @@ def compute_lps(pattern):
 
 
 def kmp_search(text, pattern):
-    n, m = len(text), len(pattern)
+    n = len(text)
+    m = len(pattern)
 
     lps = compute_lps(pattern)
 
@@ -64,6 +64,7 @@ def kmp_search(text, pattern):
     i = j = 0
 
     while i < n:
+
         comparisons += 1
 
         if pattern[j] == text[i]:
@@ -83,17 +84,18 @@ def kmp_search(text, pattern):
     return matches, comparisons
 
 
-# -------------------------
-# Rabin Karp Search
-# -------------------------
+# ---------------------------
+# Rabin Karp
+# ---------------------------
 def rabin_karp(text, pattern, q=101):
-    n, m = len(text), len(pattern)
+
+    n = len(text)
+    m = len(pattern)
 
     if m > n:
         return [], 0
 
     d = 256
-
     h = pow(d, m - 1, q)
 
     p_hash = 0
@@ -111,6 +113,7 @@ def rabin_karp(text, pattern, q=101):
         if p_hash == t_hash:
 
             for k in range(m):
+
                 comparisons += 1
 
                 if text[s + k] != pattern[k]:
@@ -131,13 +134,11 @@ def rabin_karp(text, pattern, q=101):
     return matches, comparisons
 
 
-# -------------------------
-# Home Page
-# -------------------------
 @app.route("/", methods=["GET", "POST"])
 def home():
 
     result = ""
+    chart = ""
 
     if request.method == "POST":
 
@@ -159,56 +160,104 @@ KMP    -> Matches at: {m2}, Comparisons: {c2}
 RK     -> Matches at: {m3}, Comparisons: {c3}
 """
 
-        else:
-            result = "Pattern length should be less than or equal to Text length."
+            chart = f"""
+            <h2>Comparison Chart</h2>
 
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>String Matching Algorithms</title>
-        <style>
-            body {{
-                font-family: Arial;
-                margin: 40px;
-            }}
-            input {{
-                width: 500px;
-                padding: 8px;
-                margin: 5px;
-            }}
-            button {{
-                padding: 10px 20px;
-            }}
-            pre {{
-                background: #f4f4f4;
-                padding: 15px;
-            }}
-        </style>
-    </head>
-    <body>
+            <canvas id="myChart"></canvas>
 
-        <h1>String Matching Algorithm Comparison</h1>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        <form method="POST">
+            <script>
+            const ctx = document.getElementById('myChart');
 
-            <label><b>Enter Text:</b></label><br>
-            <input type="text" name="text" required><br><br>
+            new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: ['Naive', 'KMP', 'Rabin-Karp'],
+                    datasets: [{{
+                        label: 'Comparisons',
+                        data: [{c1}, {c2}, {c3}]
+                    }}]
+                }},
+                options: {{
+                    responsive: true
+                }}
+            }});
+            </script>
+            """
 
-            <label><b>Enter Pattern:</b></label><br>
-            <input type="text" name="pattern" required><br><br>
+    return render_template_string(
+        """
+<!DOCTYPE html>
+<html>
 
-            <button type="submit">Search</button>
+<head>
+<title>String Matching Algorithms</title>
 
-        </form>
+<style>
 
-        <br>
+body{
+font-family:Arial;
+margin:40px;
+}
 
-        <pre>{result}</pre>
+input{
+width:500px;
+padding:10px;
+margin:5px;
+}
 
-    </body>
-    </html>
-    """
+button{
+padding:10px 20px;
+}
+
+pre{
+background:#f4f4f4;
+padding:15px;
+}
+
+table{
+border-collapse:collapse;
+margin-top:20px;
+}
+
+td,th{
+border:1px solid black;
+padding:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>String Matching Algorithm Comparison</h1>
+
+<form method="POST">
+
+Text:<br>
+<input type="text" name="text" required><br><br>
+
+Pattern:<br>
+<input type="text" name="pattern" required><br><br>
+
+<button type="submit">Search</button>
+
+</form>
+
+<br>
+
+<pre>{{result}}</pre>
+
+{{chart|safe}}
+
+</body>
+</html>
+""",
+        result=result,
+        chart=chart
+    )
 
 
 if __name__ == "__main__":
